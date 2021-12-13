@@ -3,6 +3,7 @@ version: 2.1
 orbs:
   build-tools: circleci/build-tools@3.0.0
   aws-cli: circleci/aws-cli@2.0.3
+  ansible-playbook: orbss/ansible-playbook@0.0.5
 
 commands:
   destroy-environment:
@@ -164,7 +165,7 @@ jobs:
           root: ~/
           paths:
             - project/.circleci/ansible/inventory.txt
-      # Here's where you will add some code to rollback on failure
+      - destroy_environment
 
   configure-infrastructure:
     docker:
@@ -184,7 +185,7 @@ jobs:
           name: Configure server
           command: |
             ansible-playbook -i inventory.txt .circleci/ansible/configure-server.yml
-      # Here's where you will add some code to rollback on failure
+      - destroy_environment
 
   run-migrations:
     docker:
@@ -207,28 +208,52 @@ jobs:
             then
               curl -H "Content-Type: text/plain" -H "token: 7933fe63-4687-4fa1-8426-aa25aa1730ec" --request PUT --data "1" https://api.memstash.io/values/migration_${CIRCLE_WORKFLOW_ID:0:7}
             fi
-      # Here's where you will add some code to rollback on failure
+      - destroy_environment
 
-  # deploy-frontend:
-  #   docker:
-  #     # Docker image here that supports AWS CLI
-  #   steps:
-  #     # Checkout code from git
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           # your code here
-  #     - run:
-  #         name: Get backend url
-  #         command: |
-  #           # your code here
-  #           export API_URL="http://${BACKEND_IP}:3030"
-  #           echo "${API_URL}"
-  #     - run:
-  #         name: Deploy frontend objects
-  #         command: |
-  #           # your code here
-  #     # Here's where you will add some code to rollback on failure
+  deploy-frontend:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - build-tools/install-ci-tools
+      - attach_workspace:
+          at: ~/project/backend
+      - run:
+          name: Install Python
+          command: |
+            yum install -y python3
+            yum install -y python3-pip
+      - run:
+          name: Install Ansible
+          command: |
+            pip3 install --upgrade pip
+            pip3 install --upgrade boto
+            pip3 install --upgrade boto3
+            pip3 install ansible
+      - run:
+          name: Install Node.js
+          command: |
+            yum install -y nodejs
+      - run:
+          name: Get backend url
+          command: |
+            export BACKEND_IP=$(aws ec2 describe-instances \
+              --query 'Reservations[*].Instances[*].PublicIpAddress' \
+              --filters "Name=tag:project,Values=udapeople" \
+              --output text)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "API_URL = ${API_URL}"
+            echo API_URL="http://${BACKEND_IP}:3030" >> frontend/.env
+            cat frontend/.env
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
+            npm install
+            npm run build
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+      - destroy_environment
 
   # deploy-backend:
   #   docker:
