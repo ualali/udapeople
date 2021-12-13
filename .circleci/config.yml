@@ -188,6 +188,7 @@ jobs:
           fingerprints: ["78:24:57:de:90:22:b3:e4:72:5a:ac:50:5f:36:2c:09"] # You can get this ID in the section where you registered the SSH Key
       - attach_workspace:
           at: project/.circleci/ansible
+      - build-tools/install-ci-tools
       - run:
           name: Install Python
           command: |
