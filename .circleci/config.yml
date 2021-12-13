@@ -8,13 +8,28 @@ commands:
   destroy_environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
     steps:
-      - aws-cli
       - run:
           name: Destroy environments
           when: on_fail
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}
             aws cloudformation delete-stack --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
+
+  install_aws_cli_node:
+    description: Install AWS CLI v2 on circleci/node images
+    steps:
+      - build-tools/install-ci-tools
+      - run:
+          name: Install Python
+          command: |
+            apt-get install -y python3
+            apt-get install -y python3-pip
+      - run:
+          name: Install AWS CLI
+          command: |
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install
 
   # revert-migrations:
   #   description: Revert the last migration if successfully run in the current workflow.
@@ -38,7 +53,7 @@ commands:
 jobs:
   build-frontend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: circleci/node:14.18.1
     steps:
       - checkout
       - restore_cache:
@@ -55,7 +70,7 @@ jobs:
 
   build-backend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: circleci/node:14.18.1
     steps:
       - checkout
       - restore_cache:
@@ -72,7 +87,7 @@ jobs:
 
   test-frontend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: circleci/node:14.18.1
     steps:
       - checkout
       - restore_cache:
@@ -86,7 +101,7 @@ jobs:
 
   test-backend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: circleci/node:14.18.1
     steps:
       - checkout
       - restore_cache:
@@ -100,7 +115,7 @@ jobs:
 
   scan-frontend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: circleci/node:14.18.1
     steps:
       - checkout
       - restore_cache:
@@ -116,7 +131,7 @@ jobs:
 
   scan-backend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: circleci/node:14.18.1
     steps:
       - checkout
       - restore_cache:
@@ -166,7 +181,7 @@ jobs:
 
   configure-infrastructure:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: amazon/aws-cli
     steps:
       - checkout
       - add_ssh_keys:
@@ -174,10 +189,17 @@ jobs:
       - attach_workspace:
           at: project/.circleci/ansible
       - run:
-          name: Install dependencies
+          name: Install Python
           command: |
-            # install the dependencies needed for your playbook
-            apk add --update ansible
+            yum install -y python3
+            yum install -y python3-pip
+      - run:
+          name: Install Ansible
+          command: |
+            pip3 install --upgrade pip
+            pip3 install --upgrade boto
+            pip3 install --upgrade boto3
+            pip3 install ansible
       - run:
           name: Configure server
           command: |
@@ -191,6 +213,7 @@ jobs:
       - checkout
       - restore_cache:
           keys: [backend-build]
+      - install_aws_cli_node
       - run:
           name: Run migrations
           command: |
