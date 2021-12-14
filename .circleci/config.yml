@@ -31,7 +31,7 @@ commands:
             unzip awscliv2.zip
             sudo ./aws/install
 
-  revert-migrations:
+  revert_migrations:
     description: Revert the last migration if successfully run in the current workflow.
     steps:
       - run:
