@@ -1,2 +1,2 @@
 [URL01] https://github.com/ualali/udapeople
-[URL02] 
+[URL02] http://udapeople-f34011f.s3-website-us-east-1.amazonaws.com/
