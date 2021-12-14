@@ -1,0 +1,23 @@
+---
+- name: copy to remote
+  become: true
+  copy:
+    src: artifact.tar.gz
+    dest: /home/ubuntu
+
+- name: Creates directory
+  file:
+    path: /home/ubuntu/backend
+    state: directory
+
+- name: Extract 'artifact.tar.gz'
+  ansible.builtin.unarchive:
+    src: artifact.tar.gz
+    dest: /home/ubuntu/backend
+
+- name: Start Application
+  shell: |
+    npm install
+    cd /home/ubuntu/backend 
+    pm2 stop backend
+    pm2 start npm --name "backend" -- start
