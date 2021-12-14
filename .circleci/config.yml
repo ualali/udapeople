@@ -181,26 +181,24 @@ jobs:
 
   configure-infrastructure:
     docker:
-      - image: amazon/aws-cli
+      - image: python:3.7-alpine3.11
     steps:
       - checkout
+      - build-tools/install-ci-tools
       - add_ssh_keys:
           fingerprints: ["78:24:57:de:90:22:b3:e4:72:5a:ac:50:5f:36:2c:09"] # You can get this ID in the section where you registered the SSH Key
       - attach_workspace:
           at: project/.circleci/ansible
-      - build-tools/install-ci-tools
       - run:
-          name: Install Python
+          name: Install AWS CLI
           command: |
-            yum install -y python3
-            yum install -y python3-pip
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install
       - run:
-          name: Install Ansible
+          name: Install dependencies
           command: |
-            pip3 install --upgrade pip
-            pip3 install --upgrade boto
-            pip3 install --upgrade boto3
-            pip3 install ansible
+            apk add --update ansible
       - run:
           name: Configure server
           command: |
