@@ -7,11 +7,16 @@ orbs:
 commands:
   destroy_environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
+    parameters:
+      workflow_id:
+        type: string
     steps:
       - run:
           name: Destroy environments
           when: on_fail
           command: |
+            echo "Destroying environment: << parameters.workflow_id >> "
+            aws s3 rm --recursive s3://udapeople-"${CIRCLE_WORKFLOW_ID:0:7}"
             aws cloudformation delete-stack --stack-name udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}
             aws cloudformation delete-stack --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
 
@@ -33,19 +38,20 @@ commands:
 
   revert_migrations:
     description: Revert the last migration if successfully run in the current workflow.
+    parameters:
+      workflow_id:
+        type: string
     steps:
       - run:
           name: Revert migrations
           when: on_fail
           command: |
-            # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
-            SUCCESS = 1
-            if(( $SUCCESS==1 ));
+            SUCCESS=$(curl -H "token: 7933fe63-4687-4fa1-8426-aa25aa1730ec" --request GET https://api.memstash.io/values/migration__<< parameters.workflow_id >>)
+            if (( $SUCCESS == 1 ));
             then
-            #  cd ~/project/backend
-            #  npm install
-            #  Add revert code here. You can find this in the Getting Started section.
-              exit 1
+              cd ~/project/backend
+              npm install
+              npm run migration:revert
             fi
 
 jobs:
@@ -277,7 +283,7 @@ jobs:
 
   deploy-backend:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: amazon/aws-cli
     steps:
       - checkout
       - build-tools/install-ci-tools
@@ -286,16 +292,23 @@ jobs:
       - attach_workspace:
           at: project/.circleci/ansible
       - run:
-          name: Install AWS CLI
+          name: Install Python
           command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
+            yum install -y python3
+            yum install -y python3-pip
       - run:
-          name: Install dependencies
+          name: Install Ansible
           command: |
-            apk add --update ansible
-            apk add --update nodejs nodejs-npm
+            pip3 install --upgrade pip
+            pip3 install --upgrade boto
+            pip3 install --upgrade boto3
+            pip3 install ansible
+      - run:
+          name: Install Node.js
+          command: |
+            yum install -y gcc-c++ make
+            curl -sL https://rpm.nodesource.com/setup_14.x | bash
+            yum install -y nodejs
       - run:
           name: Deploy backend
           command: |
@@ -314,20 +327,16 @@ jobs:
 
   smoke-test:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: amazon/aws-cli
     steps:
       - checkout
       - build-tools/install-ci-tools
       - run:
-          name: Install AWS CLI
+          name: Install Node.js
           command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
-      - run:
-          name: Install dependencies
-          command: |
-            apk add --update nodejs nodejs-npm
+            yum install -y gcc-c++ make
+            curl -sL https://rpm.nodesource.com/setup_14.x | bash
+            yum install -y nodejs
       - run:
           name: Get backend url
           command: |
