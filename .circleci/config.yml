@@ -22,14 +22,14 @@ commands:
       - run:
           name: Install Python
           command: |
-            apt-get install -y python3
-            apt-get install -y python3-pip
+            sudo apt-get install -y python3
+            sudo apt-get install -y python3-pip
       - run:
           name: Install AWS CLI
           command: |
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
-            ./aws/install
+            sudo ./aws/install
 
   # revert-migrations:
   #   description: Revert the last migration if successfully run in the current workflow.
